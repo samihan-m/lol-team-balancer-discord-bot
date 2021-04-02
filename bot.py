@@ -34,10 +34,10 @@ if not on_heroku:
 else:
     TOKEN = os.environ.get("DISCORD_TOKEN")
     #TOKEN = os.getenv("TEST_TOKEN")
-    from . import utils as utils
-    from . import matchmaking as matchmaking
-    from .runner import Runner
-    from .player import Player
+    import utils as utils
+    import matchmaking as matchmaking
+    from runner import Runner
+    from player import Player
     client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
 
 database = client.balancer_bot

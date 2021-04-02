@@ -46,8 +46,8 @@ if not on_heroku:
     from balancer.player import Player
 else:
     riot_api_key = os.getenv("RIOT_API_KEY")
-    from .runner import Runner
-    from .player import Player
+    from runner import Runner
+    from player import Player
     client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
 
 database = client.balancer_bot
