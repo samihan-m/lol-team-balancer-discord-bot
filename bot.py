@@ -575,7 +575,7 @@ async def edit_player(ctx, *args):
     
     runner = get_runner(ctx)  
     for player in runner.player_list:
-        if summoner_name == player.name:
+        if summoner_name.lower() == player.name.lower():
             retrieved_player = player
             break
     
@@ -881,8 +881,8 @@ async def start_game(ctx):
             #Start matchmaking process
             
             #First, update players
-            #for player in queued_players:
-                #utils.update_player(player)
+            for player in queued_players:
+                utils.update_player(player)
             
             print(f"Starting matchmaking process with these players: {queued_players}")
             role_pools = matchmaking.create_role_pools(queued_players)
