@@ -745,7 +745,7 @@ async def activate_player(ctx, *args):
         retrieved_player = None
         
         for player in runner.player_list:
-            if summoner_name == player.name:
+            if summoner_name.lower() == player.name.lower():
                 retrieved_player = player
                 break
             
@@ -808,7 +808,7 @@ async def deactivate_player(ctx, *args):
         retrieved_player = None
         
         for player in runner.player_list:
-            if summoner_name == player.name:
+            if summoner_name.lower() == player.name.lower():
                 retrieved_player = player
                 break
             
