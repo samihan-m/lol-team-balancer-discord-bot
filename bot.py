@@ -28,10 +28,15 @@ else:
     from .runner import Runner
     from .player import Player
 
-load_dotenv()
-#TOKEN = os.getenv('DISCORD_TOKEN')
-TOKEN = os.getenv("TEST_TOKEN")
-
+on_heroku = False
+    if 'ON_HEROKU' in os.environ:
+        on_heroku = True
+if not on_heroku:
+    load_dotenv()
+    #TOKEN = os.getenv('DISCORD_TOKEN')
+    TOKEN = os.getenv("TEST_TOKEN")
+else:
+    TOKEN = os.environ.get("DISCORD_TOKEN")
 
 #Read custom prefixes from file - custom_prefixes.json
 custom_prefixes_location = r"./custom_prefixes.json"

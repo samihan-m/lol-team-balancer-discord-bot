@@ -36,8 +36,15 @@ import pickle
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-riot_api_key = os.getenv("RIOT_API_KEY")
+on_heroku = False
+    if 'ON_HEROKU' in os.environ:
+        on_heroku = True
+if not on_heroku:
+    load_dotenv()
+    riot_api_key = os.environ.get("RIOT_API_KEY")
+else:
+    riot_api_key = os.getenv("RIOT_API_KEY")
+
 
 riot_api = LolWatcher(riot_api_key)
 
