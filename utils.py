@@ -37,8 +37,8 @@ import os
 from dotenv import load_dotenv
 
 on_heroku = False
-    if 'ON_HEROKU' in os.environ:
-        on_heroku = True
+if 'ON_HEROKU' in os.environ:
+    on_heroku = True
 if not on_heroku:
     load_dotenv()
     riot_api_key = os.environ.get("RIOT_API_KEY")

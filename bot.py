@@ -29,8 +29,8 @@ else:
     from .player import Player
 
 on_heroku = False
-    if 'ON_HEROKU' in os.environ:
-        on_heroku = True
+if 'ON_HEROKU' in os.environ:
+    on_heroku = True
 if not on_heroku:
     load_dotenv()
     #TOKEN = os.getenv('DISCORD_TOKEN')
