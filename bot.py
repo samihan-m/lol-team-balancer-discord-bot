@@ -36,7 +36,8 @@ if not on_heroku:
     #TOKEN = os.getenv('DISCORD_TOKEN')
     TOKEN = os.getenv("TEST_TOKEN")
 else:
-    TOKEN = os.environ.get("DISCORD_TOKEN")
+    #TOKEN = os.environ.get("DISCORD_TOKEN")
+    TOKEN = os.getenv("TEST_TOKEN")
 
 #Read custom prefixes from file - custom_prefixes.json
 custom_prefixes_location = r"./custom_prefixes.json"
