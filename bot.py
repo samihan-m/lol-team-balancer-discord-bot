@@ -733,53 +733,60 @@ async def activate_player(ctx, *args):
     """
     
     runner = get_runner(ctx)
-    summoner_name = " ".join(args[:])
     
-    retrieved_player = None
+    command_args = " ".join(args[:]).split(",")
     
-    for player in runner.player_list:
-        if summoner_name == player.name:
-            retrieved_player = player
-            break
+    summoner_names = []
+    for arg in command_args:
+        summoner_names.append(arg.strip())
         
-    if retrieved_player is None:
-        #Display failure embed - "That player is not in the player list."        
-        embed = discord.Embed(
-                title = "Nobody Found",
-                description  = f"That player is not in the player list.\nFix any typos, or add them with the add command.",
-                color = discord.Color.red()
-                )
-        embed.set_author(name = "Error", icon_url = crossURL)
-    else:
-        #Check if player is already active or not
-        if retrieved_player.is_active:
-            #Send already active embed
+    for summoner_name in summoner_names:
+    
+        retrieved_player = None
+        
+        for player in runner.player_list:
+            if summoner_name == player.name:
+                retrieved_player = player
+                break
             
+        if retrieved_player is None:
+            #Display failure embed - "That player is not in the player list."        
             embed = discord.Embed(
-                title = f"Player Not Changed",
-                description = f"This player is already in queue.\nNothing has been changed.",
-                color = discord.Color.red()
-                )
-            
+                    title = "Nobody Found",
+                    description  = f"The player {summoner_name} is not in the player list.\nFix any typos, or add them with the add command.",
+                    color = discord.Color.red()
+                    )
             embed.set_author(name = "Error", icon_url = crossURL)
-            
         else:
-            #Activate player!
-            retrieved_player.is_active = True
+            #Check if player is already active or not
+            if retrieved_player.is_active:
+                #Send already active embed
+                
+                embed = discord.Embed(
+                    title = f"Player Not Changed",
+                    description = f"{summoner_name} is already in queue.\nNothing has been changed.",
+                    color = discord.Color.red()
+                    )
+                
+                embed.set_author(name = "Error", icon_url = crossURL)
+                
+            else:
+                #Activate player!
+                retrieved_player.is_active = True
+                
+                embed = discord.Embed(
+                    title = f"{retrieved_player.name} is Queued",
+                    description = f"This player is now in the active Queue.\nRemove them with the dequeue command.",
+                    color = discord.Color.green()
+                    )
+                embed.set_author(name = "Player Queued", icon_url = checkURL)
+                
+                #Write the updated runner list to file
+                utils.store_runner_list(runner_list)
             
-            embed = discord.Embed(
-                title = f"{retrieved_player.name} is Queued",
-                description = f"This player is now in the active Queue.\nRemove them with the dequeue command.",
-                color = discord.Color.green()
-                )
-            embed.set_author(name = "Player Queued", icon_url = checkURL)
+            embed.set_footer(text = 'To view the player list, use the list command.')
             
-            #Write the updated runner list to file
-            utils.store_runner_list(runner_list)
-        
-        embed.set_footer(text = 'To view the player list, use the list command.')
-        
-    await ctx.send(embed = embed)
+        await ctx.send(embed = embed)
     
 @bot.command(name = "dequeue")
 async def deactivate_player(ctx, *args):
@@ -789,53 +796,60 @@ async def deactivate_player(ctx, *args):
     """
     
     runner = get_runner(ctx)
-    summoner_name = " ".join(args[:])
     
-    retrieved_player = None
+    command_args = " ".join(args[:]).split(",")
     
-    for player in runner.player_list:
-        if summoner_name == player.name:
-            retrieved_player = player
-            break
+    summoner_names = []
+    for arg in command_args:
+        summoner_names.append(arg.strip())
         
-    if retrieved_player is None:
-        #Display failure embed - "That player is not in the player list."        
-        embed = discord.Embed(
-                title = "Nobody Found",
-                description  = f"That player is not in the player list.\nFix any typos, or add them with the add command.",
-                color = discord.Color.red()
-                )
-        embed.set_author(name = "Error", icon_url = crossURL)
-    else:
-        #Check if player is already not active or not
-        if retrieved_player.is_active is False:
-            #Send already active embed
+    for summoner_name in summoner_names:
+    
+        retrieved_player = None
+        
+        for player in runner.player_list:
+            if summoner_name == player.name:
+                retrieved_player = player
+                break
             
+        if retrieved_player is None:
+            #Display failure embed - "That player is not in the player list."        
             embed = discord.Embed(
-                title = f"Player Not Changed",
-                description = f"This player is already not in queue.\nNothing has been changed.",
-                color = discord.Color.red()
-                )
-            
+                    title = "Nobody Found",
+                    description  = f"That player is not in the player list.\nFix any typos, or add them with the add command.",
+                    color = discord.Color.red()
+                    )
             embed.set_author(name = "Error", icon_url = crossURL)
-            
         else:
-            #Deactivate player!
-            retrieved_player.is_active = False
+            #Check if player is already not active or not
+            if retrieved_player.is_active is False:
+                #Send already active embed
+                
+                embed = discord.Embed(
+                    title = f"Player Not Changed",
+                    description = f"This player is already not in queue.\nNothing has been changed.",
+                    color = discord.Color.red()
+                    )
+                
+                embed.set_author(name = "Error", icon_url = crossURL)
+                
+            else:
+                #Deactivate player!
+                retrieved_player.is_active = False
+                
+                embed = discord.Embed(
+                    title = f"{retrieved_player.name} is Dequeued",
+                    description = f"This player is now out of the active Queue.\nAdd them with the queue command.",
+                    color = discord.Color.green()
+                    )
+                embed.set_author(name = "Player Dequeued", icon_url = checkURL)
+                
+                #Write the updated runner list to file
+                utils.store_runner_list(runner_list)
             
-            embed = discord.Embed(
-                title = f"{retrieved_player.name} is Dequeued",
-                description = f"This player is now out of the active Queue.\nAdd them with the queue command.",
-                color = discord.Color.green()
-                )
-            embed.set_author(name = "Player Dequeued", icon_url = checkURL)
+            embed.set_footer(text = 'To view the player list, use the list command.')
             
-            #Write the updated runner list to file
-            utils.store_runner_list(runner_list)
-        
-        embed.set_footer(text = 'To view the player list, use the list command.')
-        
-    await ctx.send(embed = embed)
+        await ctx.send(embed = embed)
     
 @bot.command(name = "start")
 async def start_game(ctx):
@@ -1135,11 +1149,11 @@ async def print_help_message(ctx):
     help_embed.add_field(name="__**Basic Commands**__", value = "You don't need anything more than these commands:", inline=False)
     #help_embed.add_field(name=f"{prefix}help", value = "Get this message DM'd to you.", inline=False)
     help_embed.add_field(name=f"{prefix}rpcode", value = "See a description of what the Role Preference Code is.", inline=False)
-    help_embed.add_field(name=f"{prefix}add", value = "Add a player to the player list.", inline=False)
-    help_embed.add_field(name=f"{prefix}edit", value = "Edit a player's role preference code.", inline=False)
-    help_embed.add_field(name=f"{prefix}remove", value = "Remove a player from the player list.", inline=False)
-    help_embed.add_field(name=f"{prefix}queue", value = "Enter a player into the active queue for game creation.", inline=False)
-    help_embed.add_field(name=f"{prefix}dequeue", value = "Remove a player from the active queue.", inline=False)
+    help_embed.add_field(name=f"{prefix}add", value = f"Add a player to the player list.\nSyntax: {prefix}add Name RPCode", inline=False)
+    help_embed.add_field(name=f"{prefix}edit", value = "Edit a player's role preference code. Same syntax as add.", inline=False)
+    help_embed.add_field(name=f"{prefix}remove", value = f"Remove a player from the player list.\nSyntax: {prefix}remove Name", inline=False)
+    help_embed.add_field(name=f"{prefix}queue", value = f"Enter a player (or multiple, separated by commas) into the active queue for game creation.\nSyntax: {prefix}queue Name OR {prefix}queue Name1, Name2, ...", inline=False)
+    help_embed.add_field(name=f"{prefix}dequeue", value = f"Remove a player (or multiple, separated by commas) from the active queue.\nSyntax: {prefix}dequeue Name OR {prefix}dequeue Name1, Name2, ...", inline=False)
     help_embed.add_field(name=f"{prefix}list", value = "List all players, grouped by those in queue and those not in queue.", inline=False)
     help_embed.add_field(name=f"{prefix}start", value = "Create balanced teams and display them (requires 10 people in queue).", inline=False)
     #help_embed.add_field(name="", value = "", inline=False)
@@ -1167,6 +1181,7 @@ async def print_rpcode_help_message(ctx):
     embed.add_field(name="NEEDS ALL 5 ROLES", value = f"You can't put 1 if you only want to play Top lane. You HAVE to rank order every role.", inline=False)
     embed.add_field(name="What is it for?", value = f"With this code, the team balancing algorithm can place you in the role you'd most like to play.", inline = False)
     embed.add_field(name="Autofill", value = f"However, one or two players will likely be autofilled because not everybody can get the role they want.", inline = False)
+    embed.add_field(name="Example Add Command", value = f"**!add Vanea 41352**\nThis would add the summoner Vanea, who prefers to play (in order):\nBot, Top, Mid, Support, Jungle.", inline = False)
     
     await ctx.send(embed = embed)
     
