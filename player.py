@@ -9,7 +9,7 @@ class Player(object):
     Contains info for League of Legends players.
     """
     
-    def __init__(self, name, region, summoner_id, solo_rank_string, flex_rank_string, previous_rank_string, rank_score, role_preference_code, icon):
+    def __init__(self, name, region, summoner_id, solo_rank_string, flex_rank_string, previous_rank_string, rank_score, role_preference_code, icon, is_active = False):
         """
         Player constructor - takes League name, region, rank string, rank code, previous season rank string / rank code, role code, 
         """
@@ -28,7 +28,7 @@ class Player(object):
         #players are set to active by default. if they aren't active, why are they being created?
         #point is, if a player is adding their name to the bot, there's probably a game being made at that moment.
         #BUT it doesn't make sense to automatically be in queue.
-        self.is_active = False
+        self.is_active = is_active
         
     def get_rank_code_from_rank_string(self, encode_function):
         """

@@ -4,11 +4,6 @@ Created on Mar 27, 2021
 @author: ssmup
 '''
 
-if __package__ is None or __package__ == "":
-    from runner import Runner
-else:
-    from .runner import Runner
-
 """
 Functions to implement:
 
@@ -31,10 +26,14 @@ from bs4 import BeautifulSoup
 
 #For writing/reading the player_list
 import pickle
+import json
 
 #For loading environment variables (such as API key)
 import os
 from dotenv import load_dotenv
+
+#For writing/reading player list to cloud atlas
+import pymongo
 
 on_heroku = False
 if 'ON_HEROKU' in os.environ:
@@ -42,9 +41,17 @@ if 'ON_HEROKU' in os.environ:
 if not on_heroku:
     load_dotenv()
     riot_api_key = os.environ.get("RIOT_API_KEY")
+    client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
+    from balancer.runner import Runner
+    from balancer.player import Player
 else:
     riot_api_key = os.getenv("RIOT_API_KEY")
+    from .runner import Runner
+    from .player import Player
+    client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
 
+database = client.balancer_bot
+runner_db = database.runners
 
 riot_api = LolWatcher(riot_api_key)
 
@@ -368,7 +375,72 @@ def get_role_emote_string(role_preference_code):
     on bot init, there is a file that it reads - (or it creates 1 runner for every file in data) to initalize the runners then call readPlayers on each
     
     """
+
     
+def retrieve_runner_list():
+    """
+    Take the names of all files in a given directory, instantiating a Runner object for each one, using the name as the server_id.
+    Returns the list of runners.
+    """
+    print("Retrieving runner list")
+    runner_list = list()
+    try:
+        for runner in runner_db.find():
+            try:
+                runner_object = Runner(runner['server_id'], runner['region'])
+                
+                for json_player in runner['player_list']:
+                    player = Player(**json.loads(json_player))
+                    runner_object.player_list.append(player)
+                
+                runner_list.append(runner_object)
+            except Exception as e:
+                print(repr(e))
+    except Exception as e:
+        print("Error retrieving runner list")
+        print(repr(e))
+        
+    return runner_list
+
+def store_runner_list(runner_list):
+    """
+    Given a runner_list, writes each runner to a file based on the runner's server_id.
+    Returns True if the write succeeds. False if an error occurs (in any of the write_players calls).
+    """
+    print("Storing runner list")
+    success = True
+    for runner in runner_list:
+        
+        json_player_list = []
+        try:
+            for player in runner.player_list:
+                json_player_list.append(json.dumps(player.__dict__))
+        except Exception as e:
+            print(repr(e))
+            
+        try:
+            runner_document = {
+                "server_id": runner.server_id,
+                "region": runner.region,
+                "player_list": json_player_list
+                }
+            #clear old runner
+            runner_db.delete_many({'server_id': runner.server_id})
+            runner_db.insert_one(runner_document)
+            
+            """
+            runner object:
+            server_id: id of server
+            region: region of runner
+            player_list: list of Player objects
+            """
+        except Exception as e:
+            print("Error storing runner list")
+            print(repr(e))
+    print(f"Store success: {success}")
+    return success
+
+'''
 def retrieve_runner_list(data_directory):
     """
     Take the names of all files in a given directory, instantiating a Runner object for each one, using the name as the server_id.
@@ -379,7 +451,7 @@ def retrieve_runner_list(data_directory):
     try:
         server_id_list = os.listdir(data_directory)
     except:
-        print("Data directory does not exist")
+        print(f"Data directory at {data_directory} does not exist")
         #create directory
         os.mkdir(data_directory)
     runner_list = list()
@@ -413,6 +485,7 @@ def store_runner_list(runner_list, data_directory):
             print(repr(e))
     print(f"Write success: {success}")
     return success
+'''
 
 def update_player(player):
     """

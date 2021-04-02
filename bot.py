@@ -14,19 +14,10 @@ import discord
 from discord.ext import commands
 
 #For writing/reading information like the custom_prefixes dictionary
-import pickle
+#import pickle
 
-#This is here because package is None when Heroku runs bot.py
-if __package__ is None or __package__ == "":
-    import utils
-    import matchmaking
-    from runner import Runner
-    from player import Player
-else:
-    from . import utils as utils
-    from . import matchmaking as matchmaking
-    from .runner import Runner
-    from .player import Player
+#For writing/reading player list to cloud atlas
+import pymongo
 
 on_heroku = False
 if 'ON_HEROKU' in os.environ:
@@ -35,10 +26,24 @@ if not on_heroku:
     load_dotenv()
     #TOKEN = os.getenv('DISCORD_TOKEN')
     TOKEN = os.getenv("TEST_TOKEN")
+    import balancer.utils as utils
+    import balancer.matchmaking as matchmaking
+    from balancer.runner import Runner
+    from balancer.player import Player
+    client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
 else:
-    #TOKEN = os.environ.get("DISCORD_TOKEN")
-    TOKEN = os.getenv("TEST_TOKEN")
+    TOKEN = os.environ.get("DISCORD_TOKEN")
+    #TOKEN = os.getenv("TEST_TOKEN")
+    from . import utils as utils
+    from . import matchmaking as matchmaking
+    from .runner import Runner
+    from .player import Player
+    client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
 
+database = client.balancer_bot
+custom_prefixes_db = database.custom_prefixes
+
+"""
 #Read custom prefixes from file - custom_prefixes.json
 custom_prefixes_location = r"./custom_prefixes.json"
 custom_prefixes = dict()
@@ -52,6 +57,8 @@ else:
         print("Loading custom prefixes succeeded")
     except:
         print("Loading custom prefixes failed")
+"""
+
     
 default_prefixes = ["!", ">"]
 
@@ -66,7 +73,24 @@ async def get_prefixes(bot, message):
         server_id = server.id
     
     #Get custom prefix list OR default prefixes
-    prefixes = custom_prefixes.get(server_id, default_prefixes)
+    #prefixes = custom_prefixes.get(server_id, default_prefixes)
+    
+    if server_id is None:
+        prefixes = default_prefixes
+    else:
+        prefixes = default_prefixes
+        custom_prefixes = custom_prefixes_db.find_one({"server_id": server_id})
+        """
+        custom_prefix document:
+        {
+        '_id': N/A
+        'server_id': a server's id
+        'prefixes': a list with 1 element in it, a string
+        }
+        
+        """
+        if custom_prefixes is not None:
+            prefixes = custom_prefixes['prefixes']
         
     return prefixes
 
@@ -93,7 +117,7 @@ async def on_ready():
 data_directory = "./data"
 
 #retrieve runners
-runner_list = utils.retrieve_runner_list(data_directory)
+runner_list = utils.retrieve_runner_list()
 #Update all players on read
 for runner in runner_list:
     for player in runner.player_list:
@@ -148,6 +172,7 @@ async def set_prefix(ctx, prefix):
                     )
                 embed.set_author(name = "Custom Prefix Set", icon_url = checkURL)
                 
+                """
                 custom_prefixes[server_id] = prefix
                 
                 print("Attempting custom prefix dictionary write")
@@ -160,7 +185,27 @@ async def set_prefix(ctx, prefix):
                     print(f"Failure writing custom prefix dictionary to {custom_prefixes_location}")
                     #Failure to write embed (Valid prefix, but failed writing - "The new prefix will most likely reset overnight - set it again soon!"
                     await ctx.send("There was an error in saving the prefix - it will most likely reset overnight - set it again soon!")
+                """
                 
+                """
+                custom_prefix document:
+                {
+                '_id': N/A
+                'server_id': a server's id
+                'prefixes': a list with 1 element in it, a string
+                }
+                
+                """
+                prefix_document = {'server_id': server_id, 'prefixes': [prefix]}
+                try:
+                    #clear any old prefixes first
+                    custom_prefixes_db.delete_many({'server_id': server_id})
+                    custom_prefixes_db.insert_one(prefix_document)
+                    print("Success writing custom prefix dictionary to database")
+                except Exception as e:
+                    print("Failure writing custom prefix dictionary to database")
+                    await ctx.send("There was an error in saving the prefix - it will most likely reset overnight - set it again soon!")
+                    print(repr(e))
             else:
                 print("Invalid prefix.")
                 #Invalid prefix embed - "Try a new prefix
@@ -261,6 +306,7 @@ async def add_player(ctx, *args):
     Reads summoner name and role preference code, validating both before creating a Player object and adding it to the server's player list.
     Also, if valid, calls get_player to print the info embed from that function.
     """
+    print("Adding player")
 
     #Check if enough inputs were given (1. summoner name, 2. role preference code)
     if len(args) < 2:
@@ -352,7 +398,7 @@ async def add_player(ctx, *args):
                     print(f"Added player {player} to {runner}")
                     #print(f"Runner list after appending player to runner: {runner_list}")
                     #Write the updated runner list to file
-                    utils.store_runner_list(runner_list, data_directory)
+                    utils.store_runner_list(runner_list)
                     
                     embed = create_player_info_embed(player)
                     
@@ -422,6 +468,8 @@ async def remove_player(ctx, *args):
         embed.set_thumbnail(url = player.icon)
         
         embed.set_footer(text = 'To add this player again, use the add command.')
+        
+        utils.store_runner_list(runner_list)
         
     await ctx.send(embed = embed)
     
@@ -499,6 +547,8 @@ async def update_player(ctx, *args, server_id = None):
             runner.player_list.append(new_player)
             embed = create_player_info_embed(new_player)
             embed.description = "The player's information has been updated."
+            
+            utils.store_runner_list(runner_list)
                 
             embed.set_author(name = "Updated Player", icon_url = checkURL)
         
@@ -547,7 +597,7 @@ async def edit_player(ctx, *args):
             retrieved_player.role_preference_code = role_preference_code
             
             #Write the updated runner list to file
-            utils.store_runner_list(runner_list, data_directory)
+            utils.store_runner_list(runner_list)
             
             embed = create_player_info_embed(player)
             
@@ -725,7 +775,7 @@ async def activate_player(ctx, *args):
             embed.set_author(name = "Player Queued", icon_url = checkURL)
             
             #Write the updated runner list to file
-            utils.store_runner_list(runner_list, data_directory)
+            utils.store_runner_list(runner_list)
         
         embed.set_footer(text = 'To view the player list, use the list command.')
         
@@ -781,7 +831,7 @@ async def deactivate_player(ctx, *args):
             embed.set_author(name = "Player Dequeued", icon_url = checkURL)
             
             #Write the updated runner list to file
-            utils.store_runner_list(runner_list, data_directory)
+            utils.store_runner_list(runner_list)
         
         embed.set_footer(text = 'To view the player list, use the list command.')
         
@@ -837,7 +887,7 @@ async def start_game(ctx):
                     print(matchup)
             """
             
-            selected_matchups = matchmaking.select_matchups(sorted_matchups)
+            selected_matchups = matchmaking.select_matchups(sorted_matchups, queued_players)
             """
             for role in selected_matchups:
                 print(role)
@@ -847,8 +897,9 @@ async def start_game(ctx):
             team_combinations = matchmaking.generate_teams(selected_matchups)
             
             await display_team_combination_embed(ctx, team_combinations)
-        except:
+        except Exception as e:
             await ctx.send("Uh oh, the bot broke. Go tell Vanea#3158 about it.")
+            print(repr(e))
         
 async def display_team_combination_embed(ctx, team_combinations, index = 0):
     """

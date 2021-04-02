@@ -19,3 +19,5 @@ setuptools==41.2.0
 urllib3==1.25.9
 websockets==8.1
 yarl==1.4.2
+pymongo==3.11.3
+dnspython==1.16.0

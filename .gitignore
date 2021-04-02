@@ -2,3 +2,5 @@ __pycache__/
 data/
 .env
 custom_prefixes.json
+old-data/
+cloudatlas.py

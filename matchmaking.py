@@ -183,9 +183,12 @@ def generate_matchups(role_pools):
     
     return sorted_matchups
 
-def select_matchups(sorted_matchups):
+def select_matchups(sorted_matchups, player_list):
     """
     From a dictionary of sorted matchups (retrieved from generate_matchups) generate a list of the optimal matchups for each role.
+    
+    Also takes in a player_list for autofill purposes.
+    
     Returns the list.
     """
     
@@ -199,7 +202,7 @@ def select_matchups(sorted_matchups):
         print(list)
     """
     
-    selected_players = {"top": [], "jug": [], "mid": [], "bot": [], "sup": []}
+    selected_matchups = {"top": [], "jug": [], "mid": [], "bot": [], "sup": []}
     
     for i in range(0, 5):
         role = prioritized_matchups[i][0]
@@ -213,8 +216,8 @@ def select_matchups(sorted_matchups):
             
             player_one = matchup.player_one
             player_two = matchup.player_two
-            selected_players[role].append(player_one)
-            selected_players[role].append(player_two)
+            selected_matchups[role].append(player_one)
+            selected_matchups[role].append(player_two)
             
             #Remove all other matchups with those players
             print(f"Removing matchups with {player_one} or {player_two}")
@@ -232,9 +235,27 @@ def select_matchups(sorted_matchups):
             #need to autofill
             print(f"Need to autofill for {role}")
             #autofill will be handled later
+            for role in selected_matchups:
+                print(role)
+                for player in selected_matchups[role]:
+                    print(player)
+                    
     
-    #turn the selected players 
-    return selected_players
+    #perform autofill check
+    unfilled_matchups = [role for role in selected_matchups if len(selected_matchups[role]) < 2]
+    selected_players = [player for role in selected_matchups.values() for player in role]
+    remaining_players = [player for player in player_list if player not in selected_players]
+    
+    if len(remaining_players) > 0:
+        print(f"Performing autofill protocol for {unfilled_matchups}")
+        for role in unfilled_matchups:
+            selected_matchups[role].append(remaining_players[0])
+            selected_matchups[role].append(remaining_players[1])
+            print(f"Filling {role} with {remaining_players}")
+    
+    
+    #turn the selected matchups 
+    return selected_matchups
 
 def generate_teams(selected_matchups):
     """
