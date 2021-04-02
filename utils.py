@@ -380,6 +380,8 @@ def retrieve_runner_list(data_directory):
         server_id_list = os.listdir(data_directory)
     except:
         print("Data directory does not exist")
+        #create directory
+        os.mkdir(data_directory)
     runner_list = list()
     for server_id in server_id_list:
         try:
