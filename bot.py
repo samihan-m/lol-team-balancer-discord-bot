@@ -110,10 +110,6 @@ async def on_ready():
                 ctx = None
                 await update_player(ctx, player.name, server_id = runner.server_id)
         print("Done with updating players on start-up.")
-            
-    
-#The directory in which runner's save their information
-data_directory = "./data"
 
 #retrieve runners
 runner_list = utils.retrieve_runner_list()
