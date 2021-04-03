@@ -274,8 +274,8 @@ def select_matchups(sorted_matchups, player_list):
         print(f"Performing autofill protocol for {unfilled_matchups}")
         for role in unfilled_matchups:
             #cheap autofill - literally just grab the remaining players and force them into the role
-            selected_matchups[role].append(unselected_players[0])
-            selected_matchups[role].append(unselected_players[1])
+            selected_matchups[role].append(unselected_players.pop())
+            selected_matchups[role].append(unselected_players.pop())
             
             """
             #fancier autofill - grab remaining players (there may be more than 2), create Matchup objects, pick the best one.
@@ -285,9 +285,9 @@ def select_matchups(sorted_matchups, player_list):
             matchups = generate_matchups(players_to_autofill)
             """
             
+            filled_players = [player.name for player in selected_matchups[role]]
+            print(f"Filling {role} with {filled_players}")
             
-            unpacked_players = [player.name for player in unselected_players]
-            print(f"Filling {role} with {unpacked_players}")
     
     #turn the selected matchups 
     return selected_matchups
