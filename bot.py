@@ -83,7 +83,6 @@ async def get_prefixes(bot, message):
         """
         custom_prefix document:
         {
-        '_id': N/A
         'server_id': a server's id
         'prefixes': a list with 1 element in it, a string
         }
@@ -99,18 +98,18 @@ bot.remove_command("help")
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game(name='%shelp' % default_prefixes[0]))
-    print(f'{bot.user.name} has connected to Discord!')
+    await bot.change_presence(activity=discord.Game(name=f"{default_prefixes[0]}help"))
+    print(f"{bot.user.name} has connected to Discord!")
     
-    print("Starting start-up player updates")
-    """
-    for runner in runner_list:
-        for player in runner.player_list:
-            #Trying to fake a context object
-            ctx = None
-            await update_player(ctx, player.name, server_id = runner.server_id)
-    """
-    print("Done with updating players on start-up.")
+    #Don't bother doing the update if it's just running on my computer (because I'm testing things and that slows it down)
+    if on_heroku:
+        print("Starting start-up player updates")
+        for runner in runner_list:
+            for player in runner.player_list:
+                #Trying to fake a context object
+                ctx = None
+                await update_player(ctx, player.name, server_id = runner.server_id)
+        print("Done with updating players on start-up.")
             
     
 #The directory in which runner's save their information
@@ -317,113 +316,126 @@ async def add_player(ctx, *args):
             #description = ,
             color = discord.Color.red()
             )
-        embed.add_field(name = "Syntax", value = f"{prefixes[0]}add SummonerName 12345\n(but change the numbers to fit your role preferences.)")
+        embed.add_field(name = "Syntax", value = f"Use the {prefixes[0]}help command for information.")
         embed.set_author(name = "Error", icon_url = crossURL)
         
         #putting a return here because i think it looks better than indenting the rest of the function and putting it in an else
         await ctx.send(embed = embed)
         return
     
-    embed = discord.Embed()
+    command_args = " ".join(args[:]).split(",")
     
-    #Turn args into summoner name and role preference code
-    args = list(args)
-    role_preference_code = args[-1]
-    args.pop()
-    summoner_name = " ".join(args[:])
-    
-    #First, fetch region information from the server
-    runner = get_runner(ctx)
-    region = runner.region
-    
-    #The region string will be used in all outward-facing information displays
-    region_string = utils.get_key(region)
-    
-    #Check if the summoner is already in the servers
-    is_already_added = False
-    for player in runner.player_list:
-        if summoner_name == player.name:
-            is_already_added = True
-            break
-    
-    if is_already_added:
-        #Player is already in the server embed
-        embed = discord.Embed(
-                    title = "Summoner Already Added",
-                    description  = f"The player {summoner_name} is already in the player list.\nGet their information with the get command.",
-                    color = discord.Color.red()
-                    )
-        embed.set_author(name = "Error", icon_url = crossURL)
-    else:
-        #Perform verification check
-        verification_report = utils.verify_summoner_name(summoner_name, region)
+    add_command_inputs = []
+    for arg in command_args:
+        add_command_inputs.append(arg.strip())
         
-        summoner = None
+    for command in add_command_inputs:
+    
+        embed = discord.Embed()
         
-        if verification_report['valid_summoner']:
-            summoner = verification_report['summoner']
-            
-        if summoner is None:
-            #Display invalid summoner error
-            #"The entered summoner name is invalid"
+        #Turn args into summoner name and role preference code
+        args = list(command.split(" "))
+        role_preference_code = args[-1]
+        args.pop()
+        summoner_name = " ".join(args[:])
+        
+        #First, fetch region information from the server
+        runner = get_runner(ctx)
+        region = runner.region
+        
+        #The region string will be used in all outward-facing information displays
+        region_string = utils.get_key(region)
+        
+        #Check if the summoner is already in the servers
+        is_already_added = False
+        for player in runner.player_list:
+            if summoner_name == player.name:
+                is_already_added = True
+                break
+        
+        if is_already_added:
+            #Player is already in the server embed
             embed = discord.Embed(
-                    title = "That Summoner Does Not Exist",
-                    description  = f"There is no summoner by the name {summoner_name} in the ({region_string}) region.\nTry again, or try changing the region with the region command.",
-                    color = discord.Color.red()
-                    )
-            embed.set_author(name = "Error", icon_url = crossURL)
-        else:
-            #Check validity of role preference code
-            is_valid_code = utils.verify_role_preference_code(role_preference_code)
-            if is_valid_code:
-                #Get ranked information for the player. (and icon)
-                await ctx.send("Grabbing player's rank information from Riot and op.gg. Please wait a few seconds.")
-                
-                try:
-                
-                    rank_strings = utils.get_summoner_rank_string(summoner, region)
-                    previous_rank_string = utils.get_previous_rank_string(summoner, region)
-                    icon = utils.get_summoner_icon(summoner, region)
-                    
-                    player = Player(summoner['name'], region_string, summoner['id'], 
-                                    rank_strings['solo_rank_string'], rank_strings['flex_rank_string'], previous_rank_string['previous_rank_string'],
-                                    None, role_preference_code, icon)
-                    
-                    rank_score = utils.get_rank_score(player.get_rank_strings())['rank_score']
-                    
-                    player.rank_score = rank_score
-                    
-                    #Add the player, and call get_player to display the added player's information
-                    runner.player_list.append(player)
-                    print(f"Added player {player} to {runner}")
-                    #print(f"Runner list after appending player to runner: {runner_list}")
-                    #Write the updated runner list to file
-                    utils.store_runner_list(runner_list)
-                    
-                    embed = create_player_info_embed(player)
-                    
-                    embed.set_author(name = "Added Player", icon_url = checkURL)
-                    
-                except:
-                    
-                    embed = discord.Embed(
-                        title = "Failed to Retrieve Player Information",
-                        description  = "op.gg is down. Try again later.",
+                        title = "Summoner Already Added",
+                        description  = f"The player {summoner_name} is already in the player list.\nGet their information with the get command.",
                         color = discord.Color.red()
                         )
-                    
-                    embed.set_author(name = "Error", icon_url = crossURL)
+            embed.set_author(name = "Error", icon_url = crossURL)
+        else:
+            #Perform verification check
+            verification_report = utils.verify_summoner_name(summoner_name, region)
+            
+            summoner = None
+            
+            if verification_report['valid_summoner']:
+                summoner = verification_report['summoner']
                 
-            else:
-                #The summoner was valid, but the code was not. Print the syntax for a role preference code.
+            if summoner is None:
+                #Display invalid summoner error
+                #"The entered summoner name is invalid"
                 embed = discord.Embed(
-                    title = "Invalid Role Preference Code",
-                    description  = "You entered a valid summoner, but the role preference code was invalid.\nSee rpchelp for more information.",
-                    color = discord.Color.red()
-                    )
+                        title = "That Summoner Does Not Exist",
+                        description  = f"There is no summoner by the name {summoner_name} in the ({region_string}) region.\nTry again, or try changing the region with the region command.",
+                        color = discord.Color.red()
+                        )
                 embed.set_author(name = "Error", icon_url = crossURL)
-        
-    await ctx.send(embed = embed)
+            else:
+                #Check validity of role preference code
+                is_valid_code = utils.verify_role_preference_code(role_preference_code)
+                if is_valid_code:
+                    #Get ranked information for the player. (and icon)
+                    await ctx.send(f"Grabbing {summoner_name}'s rank information from Riot and op.gg. Please wait a few seconds.")
+                    
+                    try:
+                    
+                        rank_strings = utils.get_summoner_rank_string(summoner, region)
+                        
+                        opgg_information = utils.opgg_fetch(summoner, region)
+                        
+                        previous_rank_string = opgg_information['previous_rank_string']
+                        icon = opgg_information['icon']
+                        
+                        player = Player(summoner['name'], region_string, summoner['id'], 
+                                        rank_strings['solo_rank_string'], rank_strings['flex_rank_string'], previous_rank_string,
+                                        None, role_preference_code, icon)
+                        
+                        rank_score = utils.get_rank_score(player.get_rank_strings())['rank_score']
+                        
+                        player.rank_score = rank_score
+                        
+                        #Add the player, and call get_player to display the added player's information
+                        runner.player_list.append(player)
+                        print(f"Added player {player} to {runner}")
+                        #print(f"Runner list after appending player to runner: {runner_list}")
+                        #Write the updated runner list to file
+                        utils.store_runner_list(runner_list)
+                        
+                        embed = create_player_info_embed(player)
+                        
+                        embed.set_author(name = "Added Player", icon_url = checkURL)
+                        
+                    except Exception as e:
+                        
+                        embed = discord.Embed(
+                            title = "Failed to Retrieve Player Information",
+                            description  = "op.gg is down. Try again later.",
+                            color = discord.Color.red()
+                            )
+                        
+                        embed.set_author(name = "Error", icon_url = crossURL)
+                        
+                        print(repr(e))
+                    
+                else:
+                    #The summoner was valid, but the code was not. Print the syntax for a role preference code.
+                    embed = discord.Embed(
+                        title = "Invalid Role Preference Code",
+                        description  = "You entered a valid summoner, but the role preference code was invalid.\nSee rpchelp for more information.",
+                        color = discord.Color.red()
+                        )
+                    embed.set_author(name = "Error", icon_url = crossURL)
+            
+        await ctx.send(embed = embed)
     
 @bot.command(name = "remove")
 async def remove_player(ctx, *args):
@@ -431,47 +443,57 @@ async def remove_player(ctx, *args):
     Checks if the given summoner is in the given server's player list, and if so, removes the player.
     """
     
-    #Need this join so summoner names with spaces are handled
-    summoner_name = " ".join(args[:])
+    command_args = " ".join(args[:]).split(",")
     
-    retrieved_player = None
-    embed = discord.Embed()
-    
-    runner = get_runner(ctx)
-    for player in runner.player_list:
-        if summoner_name == player.name:
-            retrieved_player = player
-            runner.player_list.remove(retrieved_player)
-            break
-    
-    if retrieved_player is None:
-        #Display failure embed - "That player is not in the player list."
-        embed = discord.Embed(
-            title = "Nobody Found",
-            description  = "That player is not in the player list.\nMaybe you made a typo?",
-            color = discord.Color.red()
-            )
-        embed.set_author(name = "Error", icon_url = crossURL)
-    else:
-        #Display player info embed
-        #Info to show: name, region, all three rank strings, role preference code, icon
-        embed = discord.Embed(
-            title = retrieved_player.name,
-            color = discord.Color.green()            
-            )
+    remove_command_inputs = []
+    for arg in command_args:
+        remove_command_inputs.append(arg.strip())
         
-        embed.add_field(name = "Region", value = player.region, inline = True)
-        embed.add_field(name = "OP.GG", value = f"[Link]({utils.generate_opgg_link(player.name, utils.regions[player.region])})", inline = True)
-        embed.add_field(name = "Role Preference", value = utils.get_role_emote_string(player.role_preference_code), inline = False)
+    for command in remove_command_inputs:
+        
+        args = list(command.split(" "))
+        
+        #Need this join so summoner names with spaces are handled
+        summoner_name = " ".join(args[:])
+        
+        retrieved_player = None
+        embed = discord.Embed()
+        
+        runner = get_runner(ctx)
+        for player in runner.player_list:
+            if summoner_name == player.name:
+                retrieved_player = player
+                runner.player_list.remove(retrieved_player)
+                break
+        
+        if retrieved_player is None:
+            #Display failure embed - "That player is not in the player list."
+            embed = discord.Embed(
+                title = "Nobody Found",
+                description  = f"'{summoner_name}' is not in the player list.\nMaybe you made a typo?",
+                color = discord.Color.red()
+                )
+            embed.set_author(name = "Error", icon_url = crossURL)
+        else:
+            #Display player info embed
+            #Info to show: name, region, all three rank strings, role preference code, icon
+            embed = discord.Embed(
+                title = f"__{retrieved_player.name}__",
+                color = discord.Color.green()            
+                )
             
-        embed.set_author(name = "Removed Player", icon_url = checkURL)
-        embed.set_thumbnail(url = player.icon)
-        
-        embed.set_footer(text = 'To add this player again, use the add command.')
-        
-        utils.store_runner_list(runner_list)
-        
-    await ctx.send(embed = embed)
+            #embed.add_field(name = "Region", value = player.region, inline = True)
+            #embed.add_field(name = "OP.GG", value = f"[Link]({utils.generate_opgg_link(player.name, utils.regions[player.region])})", inline = True)
+            #embed.add_field(name = "Role Preference", value = utils.get_role_emote_string(player.role_preference_code), inline = False)
+                
+            embed.set_author(name = "Removed Player", icon_url = checkURL)
+            embed.set_thumbnail(url = player.icon)
+            
+            embed.set_footer(text = f"To add {summoner_name} again, use the add command.")
+            
+            utils.store_runner_list(runner_list)
+            
+        await ctx.send(embed = embed)
     
 @bot.command(name = "update")
 async def update_player(ctx, *args, server_id = None):
@@ -526,7 +548,7 @@ async def update_player(ctx, *args, server_id = None):
             
             embed = discord.Embed(
                 title = "Updated Player",
-                description = "No new updates are needed.\nThis player's information is up to date.\nIf you believe this is incorrect, refresh this player's [op.gg](https://op.gg) page.",
+                description = f"No new updates are needed.\nThis player's information is up to date.\nIf you believe this is incorrect, refresh this player's [op.gg]({utils.generate_opgg_link(player.name, utils.regions[player.region])}) page and try updating again.",
                 color = discord.Color.green()          
                 )
             embed.set_author(name = "No Changes Made", icon_url = checkURL)
@@ -548,6 +570,7 @@ async def update_player(ctx, *args, server_id = None):
             embed = create_player_info_embed(new_player)
             embed.description = "The player's information has been updated."
             
+            #save the new data
             utils.store_runner_list(runner_list)
                 
             embed.set_author(name = "Updated Player", icon_url = checkURL)
@@ -561,57 +584,85 @@ async def update_player(ctx, *args, server_id = None):
 async def edit_player(ctx, *args):
     """
     Basically just add_player but instead of verifying summoner it just checks if there is a summoner to edit, then changes their role code.
-    Also, performs update_player.
     """
     
-    #Turn args into summoner name and role preference code
-    args = list(args)
-    role_preference_code = args[-1]
-    args.pop()
-    summoner_name = " ".join(args[:])
-    
-    retrieved_player = None
-    embed = discord.Embed()
-    
-    runner = get_runner(ctx)  
-    for player in runner.player_list:
-        if summoner_name.lower() == player.name.lower():
-            retrieved_player = player
-            break
-    
-    if retrieved_player is None:
-        #Display failure embed - "That player is not in the player list."        
+    #Check if enough inputs were given (1. summoner name, 2. role preference code)
+    if len(args) < 2:
+        prefixes = await get_prefixes(bot, ctx.message)
+        #Display an error message stating the syntax of the command
         embed = discord.Embed(
-                title = "Nobody Found",
-                description  = f"That player is not in the player list.\nFix any typos, or add them with the add command.",
-                color = discord.Color.red()
-                )
+            title = "Incorrect Command Usage",
+            #description = ,
+            color = discord.Color.red()
+            )
+        embed.add_field(name = "Usage", value = f"Use the {prefixes[0]}help command for information.")
         embed.set_author(name = "Error", icon_url = crossURL)
-    else:
-        #Check validity of role preference code
-        is_valid_code = utils.verify_role_preference_code(role_preference_code)
-        if is_valid_code:
-            #Update the player's role preference code
-            await ctx.send(f"Changing {retrieved_player.name}'s Role Preference Code to {role_preference_code}")
-            
-            retrieved_player.role_preference_code = role_preference_code
-            
-            #Write the updated runner list to file
-            utils.store_runner_list(runner_list)
-            
-            embed = create_player_info_embed(player)
-            
-            embed.set_author(name = "Edited Player", icon_url = checkURL)            
-        else:
-            #The summoner was valid, but the code was not. Print the syntax for a role preference code.
-            embed = discord.Embed(
-                title = "Invalid Role Preference Code",
-                description  = "You entered a valid player, but the role preference code was invalid.\nSee rpchelp for more information.",
-                color = discord.Color.red()
-                )
-            embed.set_author(name = "Error", icon_url = crossURL)
         
-    await ctx.send(embed = embed)
+        #putting a return here because i think it looks better than indenting the rest of the function and putting it in an else
+        await ctx.send(embed = embed)
+        return
+    
+    command_args = " ".join(args[:]).split(",")
+    
+    edit_command_inputs = []
+    for arg in command_args:
+        edit_command_inputs.append(arg.strip())
+        
+    print(edit_command_inputs)
+        
+    for command in edit_command_inputs:
+    
+        embed = discord.Embed()
+        
+        #Turn args into summoner name and role preference code
+        args = list(command.split(" "))
+        role_preference_code = args[-1]
+        args.pop()
+        summoner_name = " ".join(args[:])
+        
+        retrieved_player = None
+        embed = discord.Embed()
+        
+        runner = get_runner(ctx)  
+        for player in runner.player_list:
+            if summoner_name.lower() == player.name.lower():
+                retrieved_player = player
+                break
+        
+        if retrieved_player is None:
+            #Display failure embed - "That player is not in the player list."        
+            embed = discord.Embed(
+                    title = "Nobody Found",
+                    description  = f"{summoner_name} is not in the player list.\nFix any typos, or add them with the add command.",
+                    color = discord.Color.red()
+                    )
+            embed.set_author(name = "Error", icon_url = crossURL)
+        else:
+            #Check validity of role preference code
+            is_valid_code = utils.verify_role_preference_code(role_preference_code)
+            if is_valid_code:
+                #Update the player's role preference code
+                await ctx.send(f"Changing {retrieved_player.name}'s Role Preference Code to {role_preference_code}")
+                
+                retrieved_player.role_preference_code = role_preference_code
+                
+                #Write the updated runner list to file
+                utils.store_runner_list(runner_list)
+                
+                embed = create_player_info_embed(player)
+                
+                embed.set_author(name = "Edited Player", icon_url = checkURL)            
+            else:
+                prefixes = get_prefixes(bot, ctx.message)
+                #The summoner was valid, but the code was not. Print the syntax for a role preference code.
+                embed = discord.Embed(
+                    title = "Invalid Role Preference Code",
+                    description  = f"You entered a valid player, but the role preference code was invalid.\nSee {prefixes[0]}rpcode for more information.",
+                    color = discord.Color.red()
+                    )
+                embed.set_author(name = "Error", icon_url = crossURL)
+            
+        await ctx.send(embed = embed)
     
     
 @bot.command(name = "list")
@@ -652,17 +703,17 @@ async def print_player_list(ctx):
             )
         embed.set_author(name = "Player List", icon_url = checkURL)
         
-        embed.add_field(name = f"In Queue - {len(queued_players)}", value = "These players will be used to create teams when the start command is used.\nDequeue them with the dequeue command.", inline = False)
+        embed.add_field(name = f"In Queue - {len(queued_players)} Player(s)", value = "These players will be used to create teams when the start command is used. \nDequeue them with the dequeue command.", inline = False)
                 
         for player in queued_players:
-            description = utils.get_role_emote_string(player.role_preference_code)
-            embed.add_field(name = f"{player.name} - {player.rank_score:.0f} Elo", value = description, inline = True)
+            description = utils.get_role_emote_string(player.role_preference_code) + f"\n`{player.rank_score:.0f} Elo`"
+            embed.add_field(name = f"`{player.name}`", value = description, inline = True)
               
-        embed.add_field(name = f"Not In Queue - {len(out_of_queue_players)}", value = "These players can enter the queue with the queue command. Add more with the add command.", inline = False)  
+        embed.add_field(name = f"Not In Queue - {len(out_of_queue_players)} Player(s)", value = "These players can enter the queue with the queue command. Add more with the add command.", inline = False)  
             
         for player in out_of_queue_players:
-            description = utils.get_role_emote_string(player.role_preference_code)
-            embed.add_field(name = f"{player.name} - {player.rank_score:.0f} Elo", value = description, inline = True)
+            description = utils.get_role_emote_string(player.role_preference_code) + f"\n`{player.rank_score:.0f} Elo`"
+            embed.add_field(name = f"`{player.name}`", value = description, inline = True)
                 
         embed.set_footer(text = 'To edit any of this information, use the edit command.')
         
@@ -732,6 +783,22 @@ async def activate_player(ctx, *args):
     Displays an error embed if no player with that name exists.
     """
     
+    #Check if enough inputs were given (1. summoner name)
+    if len(args) < 1:
+        prefixes = await get_prefixes(bot, ctx.message)
+        #Display an error message stating the syntax of the command
+        embed = discord.Embed(
+            title = "Incorrect Command Usage",
+            #description = ,
+            color = discord.Color.red()
+            )
+        embed.add_field(name = "Usage", value = f"Use the {prefixes[0]}help command for information.")
+        embed.set_author(name = "Error", icon_url = crossURL)
+        
+        #putting a return here because i think it looks better than indenting the rest of the function and putting it in an else
+        await ctx.send(embed = embed)
+        return
+    
     runner = get_runner(ctx)
     
     command_args = " ".join(args[:]).split(",")
@@ -794,6 +861,22 @@ async def deactivate_player(ctx, *args):
     Set the player's is_active field to False.
     Displays an error embed if no player with that name exists.
     """
+    
+    #Check if enough inputs were given (1. summoner name)
+    if len(args) < 1:
+        prefixes = await get_prefixes(bot, ctx.message)
+        #Display an error message stating the syntax of the command
+        embed = discord.Embed(
+            title = "Incorrect Command Usage",
+            #description = ,
+            color = discord.Color.red()
+            )
+        embed.add_field(name = "Usage", value = f"Use the {prefixes[0]}help command for information.")
+        embed.set_author(name = "Error", icon_url = crossURL)
+        
+        #putting a return here because i think it looks better than indenting the rest of the function and putting it in an else
+        await ctx.send(embed = embed)
+        return
     
     runner = get_runner(ctx)
     
@@ -880,10 +963,12 @@ async def start_game(ctx):
         try:
             #Start matchmaking process
             
+            await ctx.send("Updating the queued players, please wait a few seconds..")
             #First, update players
-            for player in queued_players:
-                utils.update_player(player)
+            #for player in queued_players:
+                #utils.update_player(player)
             
+            await ctx.send("Starting matchmaking..")
             print(f"Starting matchmaking process with these players: {queued_players}")
             role_pools = matchmaking.create_role_pools(queued_players)
             
@@ -1008,11 +1093,13 @@ mid_icon = "<:Mid:826682003624820736>"
 bot_icon = "<:Bot:826682003339477013>"
 sup_icon = "<:Support:826682003435814952>"
 
+'''
 def wrap(text):
     """
     Returns the text wrapped in two spacer icons (one on each end)
     """
     return f"{spacer_icon}{text}{spacer_icon}"
+'''
 
 def create_team_displays(team_combo):
     displays = []
@@ -1022,17 +1109,20 @@ def create_team_displays(team_combo):
     
     print("Entering display generation loop")
     
+    #get longest name in all players
+    all_players = blue_team_players + red_team_players
+    longest_name = ""
+    for player in all_players:
+        #print(f"Checking if {player} has the longest name")
+        #print(f"Length of {player.name} is {len(player.name)}")
+        if len(player.name) > len(longest_name):
+            longest_name = player.name
+    longest_length = len(longest_name)
+    #longest_length = longest_length + longest_length % 6
+    longest_length += 3
+    
+    #pad each name so the display looks even
     for index, team_players in enumerate((blue_team_players, red_team_players)):
-        print(index, team_players)
-        longest_name = ""
-        for player in team_players:
-            #print(f"Checking if {player} has the longest name")
-            #print(f"Length of {player.name} is {len(player.name)}")
-            if len(player.name) > len(longest_name):
-                longest_name = player.name
-        longest_length = len(longest_name)
-        longest_length = longest_length + longest_length % 6
-        
         if index == 0:
             space_padded_names = [f"`{player.name: >{longest_length}}`" for player in team_players]
         else:
@@ -1066,6 +1156,9 @@ async def on_raw_reaction_remove(payload):
     await on_raw_reaction(payload)
     
 async def on_raw_reaction(payload):
+    """
+    Check if the reaction is an arrow on a team display embed; if so, update the team display embed based on the direction of the arrow.
+    """
     #Check if this is a bot adding a reaction
     if payload.event_type == "REACTION_ADD":
         if payload.member.bot:
@@ -1120,6 +1213,7 @@ async def on_raw_reaction(payload):
     blue_side_title = "`"+"{title: >{padding}}".format(title = "Blue Side", padding = blue_side_padding)+"`"
     blue_side_elo = f"{team_combo.team_one.total_rank_score:.0f} Elo"
     blue_side_padded_elo = "`"+"{elo: >{padding}}".format(elo = blue_side_elo, padding = blue_side_padding)+"`"
+    
     embed.set_field_at(0, name = blue_side_title, value = f"**{blue_side_padded_elo}\n{displays[0]['team_display']}**", inline = True)
     
     #embed.add_field(name = "VS", value = f"{spacer_icon}\n{top_icon}\n{jug_icon}\n{mid_icon}\n{bot_icon}\n{sup_icon}", inline = True)
@@ -1127,6 +1221,7 @@ async def on_raw_reaction(payload):
     red_side_title = "`"+"{title: <{padding}}".format(title = "Red Side", padding = red_side_padding)+"`"
     red_side_elo = f"{team_combo.team_two.total_rank_score:.0f} Elo"
     red_side_padded_elo = "`"+"{elo: <{padding}}".format(elo = red_side_elo, padding = red_side_padding)+"`"
+    
     embed.set_field_at(2, name = red_side_title, value = f"**{red_side_padded_elo}\n{displays[1]['team_display']}**", inline = True)
 
     await message.edit(embed = embed)
@@ -1146,19 +1241,19 @@ async def print_help_message(ctx):
     prefix = prefixes[0]
     
     #help_embed.add_field(name="*Commands are NOT Case Sensitive*", value = f"{prefix}help and {prefix}HELP do the same thing", inline=False)
-    help_embed.add_field(name="__**Basic Commands**__", value = "You don't need anything more than these commands:", inline=False)
+    help_embed.add_field(name="__**Basic Commands**__", value = "All you need to start playing balanced games:", inline=False)
     #help_embed.add_field(name=f"{prefix}help", value = "Get this message DM'd to you.", inline=False)
     help_embed.add_field(name=f"{prefix}rpcode", value = "See a description of what the Role Preference Code is.", inline=False)
-    help_embed.add_field(name=f"{prefix}add", value = f"Add a player to the player list.\nSyntax: {prefix}add Name RPCode", inline=False)
-    help_embed.add_field(name=f"{prefix}edit", value = "Edit a player's role preference code. Same syntax as add.", inline=False)
-    help_embed.add_field(name=f"{prefix}remove", value = f"Remove a player from the player list.\nSyntax: {prefix}remove Name", inline=False)
-    help_embed.add_field(name=f"{prefix}queue", value = f"Enter a player (or multiple, separated by commas) into the active queue for game creation.\nSyntax: {prefix}queue Name OR {prefix}queue Name1, Name2, ...", inline=False)
-    help_embed.add_field(name=f"{prefix}dequeue", value = f"Remove a player (or multiple, separated by commas) from the active queue.\nSyntax: {prefix}dequeue Name OR {prefix}dequeue Name1, Name2, ...", inline=False)
+    help_embed.add_field(name=f"{prefix}add", value = f"Add a player (or multiple) to the player list.\n**Usage**: `{prefix}add Name RPCode` __OR__ `{prefix}add name Name1 RPCode1, Name2 RPCode2, ...`", inline=False)
+    help_embed.add_field(name=f"{prefix}edit", value = "Edit a player's role preference code.\n**Usage**: `{prefix}edit Name RPCode` __OR__ `{prefix}edit name Name1 RPCode1, Name2 RPCode2, ...`", inline=False)
+    help_embed.add_field(name=f"{prefix}remove", value = f"Remove a player (or multiple) from the player list.\n**Usage**: `{prefix}remove Name` __OR__ `{prefix}remove Name1, Name2, ...`", inline=False)
+    help_embed.add_field(name=f"{prefix}queue", value = f"Enter a player (or multiple, separated by commas) into the active queue for game creation.\n**Usage**: `{prefix}queue Name` __OR__ `{prefix}queue Name1, Name2, ...`", inline=False)
+    help_embed.add_field(name=f"{prefix}dequeue", value = f"Remove a player (or multiple, separated by commas) from the active queue.\n**Usage**: `{prefix}dequeue Name` __OR__ `{prefix}dequeue Name1, Name2, ...`", inline=False)
     help_embed.add_field(name=f"{prefix}list", value = "List all players, grouped by those in queue and those not in queue.", inline=False)
     help_embed.add_field(name=f"{prefix}start", value = "Create balanced teams and display them (requires 10 people in queue).", inline=False)
     #help_embed.add_field(name="", value = "", inline=False)
-    help_embed.add_field(name="__**Advanced Commands**__", value = "You don't need to know these for regular bot usage:", inline=False)
-    help_embed.add_field(name=f"{prefix}prefix", value = "Set a custom command prefix for your server.", inline=False)
+    help_embed.add_field(name="__**Advanced Commands**__", value = "For advanced users.", inline=False)
+    help_embed.add_field(name=f"{prefix}prefix", value = "Set a custom command prefix for your server. (ADMINS ONLY)", inline=False)
     #help_embed.add_field(name="", value = "", inline=False)
     
     await ctx.send("Check your DMs for the Help Menu")

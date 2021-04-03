@@ -161,7 +161,8 @@ def verify_summoner_name(summoner_name, region_code, input_is_id = False):
         
     output = {'valid_summoner': valid_summoner, 'rate_limit_error': rate_limit_error, 'other_error': other_error, 'summoner': retrieved_summoner}
         
-    print("Verification complete:", output)
+    #print("Verification complete:", output)
+    print(f"Verification of {summoner_name} is complete. Valid?: {valid_summoner}")
     return output
 
 def verify_role_preference_code(role_preference_code):
@@ -182,18 +183,12 @@ def get_summoner_rank_string(summoner, region_code):
     Assumes the given summoner is legitimate. (can be retrieved from verify_summoner_name)
     Uses Riot API to fetch the current rank of the given summoner.
     Returns a dictionary of keys:
-        is_currently_ranked (if the player is currently ranked)
-        has_solo_rank (if player is ranked in solo queue)
-        has_flex_rank (if player is ranked in flex queue)
         solo_rank_string (the player's solo queue rank string (ex. SILVER 1 - None if player is not ranked))
         flex_rank_string (the player's flex queue rank string (ex. SILVER 1 - None if player is not ranked))
     """
     
     print("Fetching rank string in region: %s for summoner: %s" % (region_code, summoner['name']))
     
-    is_currently_ranked = False
-    has_solo_rank = False
-    has_flex_rank = False
     solo_rank_string = None
     flex_rank_string = None
     
@@ -204,22 +199,19 @@ def get_summoner_rank_string(summoner, region_code):
     #flex queue : queueType = "RANKED_FLEX_SR"
     
     #check if the player is in ANY leagues - easy way to check if ranked at all
-    if(len(league_list) > 0):
-        is_currently_ranked = True
-        
+    if(len(league_list) > 0):      
         #check for solo queue rank
         for league in league_list:
+            
             if(league['queueType'] == "RANKED_SOLO_5x5"):
-                has_solo_rank = True
-                solo_rank_string = "%s %s" % (league['tier'], league['rank'])
-            if(league['queueType'] == "RANKED_FLEX_SR"):
-                has_flex_rank = True
-                flex_rank_string = "%s %s" % (league['tier'], league['rank'])
+                solo_rank_string = f"{league['tier']} {league['rank']}"
                 
-    output = {"is_currently_ranked": is_currently_ranked, "has_solo_rank": has_solo_rank, "has_flex_rank": has_flex_rank,
-              "solo_rank_string": solo_rank_string, "flex_rank_string": flex_rank_string}
+            if(league['queueType'] == "RANKED_FLEX_SR"):
+                flex_rank_string = f"{league['tier']} {league['rank']}"
+                
+    output = {"solo_rank_string": solo_rank_string, "flex_rank_string": flex_rank_string}
     
-    print("Rank string fetch complete:", output)
+    print(f"Rank string fetch complete. Solo: {solo_rank_string}. Flex: {flex_rank_string}")
     return output
 
 def generate_opgg_link(summoner_name, region_code):
@@ -234,42 +226,41 @@ def generate_opgg_link(summoner_name, region_code):
         url_prefix = 'www'
         
     #If there are spaces in the summoner name, replace them with + (or _) (or %20)
-    
     summoner_name = summoner_name.replace(" ", "+")
     
     return f"https://{url_prefix}.op.gg/summoner/userName={summoner_name}"
 
-def get_previous_rank_string(summoner, region_code):
+def get_previous_rank_string(summoner, region_code, page = None):
     """
     Assumes the given summoner is legitimate. (can be retrieved from verify_summoner_name)
     Scrapes from OP.GG to fetch the previous rank of the summoner.
-    Returns a dictionary of keys:
-        has_previous_rank (if op.gg has evidence of a rank from a previous season)
+    Returns:
         previous_rank_string (the player's previous season rank string, None if op.gg doesn't have anything)
+        
+    Also can provide a requests.get() object as page to skip making the request
     """
         
-    print("Fetching previous rank string in region: %s for summoner: %s" % (region_code, summoner['name']))
+    print(f"Fetching previous rank string for {summoner['name']} in {region_code}")
     
-    has_previous_rank = False
     previous_rank_string = None
     
-    opgg_page = generate_opgg_link(summoner['name'], region_code)
+    if page is None:
     
-    #change times_to_scrape from 1 to a higher number if the scrape isn't accurate
-    #loading the page more than once (on my browser at least) makes it work better
-    times_to_scrape = 1
-    for i in range(0, times_to_scrape):
-        print("Making request #%d to op.gg for rank" % (i + 1))
-        #requesting page multiple times because it doesn't load the past rank list correctly every time
-        page = requests.get(opgg_page)
+        opgg_page = generate_opgg_link(summoner['name'], region_code)
+        
+        #change times_to_scrape from 1 to a higher number if the scrape isn't accurate
+        #loading the page more than once (on my browser at least) makes it work better
+        times_to_scrape = 1
+        for i in range(0, times_to_scrape):
+            print("Making request #%d to op.gg for rank" % (i + 1))
+            #requesting page multiple times because it doesn't load the past rank list correctly every time
+            page = requests.get(opgg_page)
         
     soup = BeautifulSoup(page.text, "html.parser")
     past_rank_list = soup.find_all("li", {"class": "Item tip"})
     
     if(len(past_rank_list) != 0):
-        
-        has_previous_rank = True      
-        
+    
         #grab the most recent one.                 
         most_recent_rank = past_rank_list[len(past_rank_list) - 1]
         
@@ -291,17 +282,17 @@ def get_previous_rank_string(summoner, region_code):
             division = int_to_roman_numerals(division)
                 
             previous_rank_string = f"{tier} {division}"
-            
-    output = {"has_previous_rank": has_previous_rank, "previous_rank_string": previous_rank_string}
     
-    print("Finished OP.GG rank fetch:", output)
+    print("Finished OP.GG rank fetch:", previous_rank_string)
     
-    return output
+    return previous_rank_string
 
-def get_summoner_icon(summoner, region_code):
+def get_summoner_icon(summoner, region_code, page = None):
     """
     Uses the same scraping method as get_previous_rank_string to instead fetch the profile icon off of op.gg
     Note: the icon will be out-of-date if the op.gg page has not been refreshed in a while
+    
+    Also can provide a requests.get() object as page to skip making the request
     """
     
     print("Fetching summoner icon in region: %s for summoner: %s" % (region_code, summoner['name']))
@@ -310,13 +301,15 @@ def get_summoner_icon(summoner, region_code):
     default_image = "https://cdn.discordapp.com/attachments/763533415978762261/826030723114336257/Default_Image_750x750.png"
     summoner_icon_link = default_image
     
-    opgg_page = generate_opgg_link(summoner['name'], region_code)
+    if page is None:
     
-    times_to_scrape = 1
-    for i in range(0, times_to_scrape):
-        print("Making request #%d to op.gg for icon" % (i + 1))
-        #requesting page multiple times because it doesn't load the past rank list correctly every time
-        page = requests.get(opgg_page)
+        opgg_page = generate_opgg_link(summoner['name'], region_code)
+        
+        times_to_scrape = 1
+        for i in range(0, times_to_scrape):
+            print("Making request #%d to op.gg for icon" % (i + 1))
+            #requesting page multiple times because it doesn't load the past rank list correctly every time
+            page = requests.get(opgg_page)
         
     soup = BeautifulSoup(page.text, "html.parser")
     profile_icon_img = soup.find("img", {"class": "ProfileImage"})
@@ -329,17 +322,28 @@ def get_summoner_icon(summoner, region_code):
     print("Finished OP.GG summoner icon fetch:", summoner_icon_link)
     
     return summoner_icon_link
-            
-"""
-#Tests
-names = ["Vanea", "AgentPine", "breadpudding82", "error_bad_name"]
-for summoner_name in names:
-    summoner = verify_summoner_name(summoner_name, "na1")['summoner']
-    if summoner is not None:
-        get_summoner_rank_string(summoner, "na1")
-        get_previous_rank_string(summoner, "na1")
-    print()
-"""   
+
+def opgg_fetch(summoner, region_code):
+    """
+    """
+    
+    print(f"Fetching information from op.gg for {summoner['name']} in {region_code}")
+    
+    opgg_page = generate_opgg_link(summoner['name'], region_code)
+        
+    #requesting page multiple times because it doesn't load the past rank list correctly every time
+    times_to_make_page_request = 1
+    for i in range(0, times_to_make_page_request):
+        print(f"Making request #{i} to op.gg for page information")   
+        page = requests.get(opgg_page)
+        
+    #using the page parameter to shortcut making several requests
+    previous_rank_string = get_previous_rank_string(summoner, region_code, page = page)
+    icon = get_summoner_icon(summoner, region_code, page = page)
+    
+    fetched_info = {"previous_rank_string": previous_rank_string, "icon": icon}
+    
+    return fetched_info
 
 def get_role_emote_string(role_preference_code):
     """
@@ -360,22 +364,6 @@ def get_role_emote_string(role_preference_code):
         role_emote_string += role_to_emote.get(digit)
     
     return role_emote_string
-    
-#def write_object(object_to_write):
-    """
-    
-    The plan for writing objects:
-    There will be a folder called 'data'
-    In that folder will be a bunch of folders, one for each server with a runner. The folders are named after the unique server IDs.
-    In each folder is a bunch of text files for each player in that server.
-    
-    on addPlayer, removePlayer, editPlayer (which should be remove player and add player), activate/deactivate, and startGame should all trigger a write.
-    A write means the given runner (and maybe every other one?) writes their player list to the appropriate folder.
-    
-    on bot init, there is a file that it reads - (or it creates 1 runner for every file in data) to initalize the runners then call readPlayers on each
-    
-    """
-
     
 def retrieve_runner_list():
     """
@@ -440,6 +428,7 @@ def store_runner_list(runner_list):
     print(f"Store success: {success}")
     return success
 
+#old runner save/load system using file system (DOES NOT WORK ON HEROKU)
 '''
 def retrieve_runner_list(data_directory):
     """
@@ -518,8 +507,13 @@ def update_player(player):
         new_solo_rank_string = rank_string_fetch['solo_rank_string']
         new_flex_rank_string = rank_string_fetch['flex_rank_string']
         
-        new_previous_rank_string = get_previous_rank_string(summoner, region_code)['previous_rank_string']
-        new_icon = get_summoner_icon(summoner, region_code)
+        #new_previous_rank_string = get_previous_rank_string(summoner, region_code)['previous_rank_string']
+        #new_icon = get_summoner_icon(summoner, region_code)
+        
+        #streamlining the op.gg scrape to only require one request, to speed things up
+        opgg_information = opgg_fetch(summoner, region_code)
+        new_previous_rank_string = opgg_information['previous_rank_string']
+        new_icon = opgg_information['icon']
         
         #Copying region because that can't have changed if control is in this code block.
         new_region = player.region
@@ -626,13 +620,3 @@ def int_to_roman_numerals(num):
                 num -= i
 
     return roman
-
-#Runner test
-#runner = Runner(1, "./data")
-#runner.player_list.append("hello")
-#runner.write_players()
-
-#runner.read_players()
-#print(runner.player_list)
-
-#runner_list = retrieve_runner_list("./data")

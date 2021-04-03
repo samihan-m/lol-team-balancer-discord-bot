@@ -41,6 +41,12 @@ class Matchup:
     def __str__(self):
         return f"{self.player_one} vs. {self.player_two} ({self.rank_delta})"
     
+    def __lt__(self, other_matchup):
+        is_less_than = False
+        if abs(self.rank_delta) < abs(other_matchup.rank_delta):
+            is_less_than = True
+        return is_less_than
+    
 class Team:
     """
     Stores the information of one team of players
@@ -72,6 +78,14 @@ class TeamMatchup:
         return f"{self.team_one} vs {self.team_two} ({self.rank_delta})"
     
     
+    def __lt__(self, other_team_matchup):
+        is_less_than = False
+        if abs(self.rank_delta) < abs(other_team_matchup.rank_delta):
+            is_less_than = True
+        return is_less_than
+    
+    
+    
 def create_role_pools(queued_player_list):
     """
     Turn the given player list (ASSUMES THEY ARE IN QUEUE) into 5 pools of players, one for each role, based on their role preference codes.
@@ -97,41 +111,45 @@ def create_role_pools(queued_player_list):
     
     #set to none by default, becomes False/True in the loop
     are_roles_pools_filled = None
-    
-    while are_roles_pools_filled is not True:
+    #declared here so I can reference it later
+    i = 0
+    #don't go through every digit unless NECESSARY
+    while are_roles_pools_filled is not True and i < 2:
         #go through their rank codes, digit by digit
-        for i in range(0, 5):
-            for player in queued_player_list:       
-                #print(player.role_preference_code[i])
-                if player.role_preference_code[i] == "1":
-                    #print(f"Adding {player.name} to the pool of potential Top players")
-                    top.append(player)
-                elif player.role_preference_code[i] == "2":
-                    #print(f"Adding {player.name} to the pool of potential Jungle players")
-                    jug.append(player)
-                elif player.role_preference_code[i] == "3":
-                    #print(f"Adding {player.name} to the pool of potential Mid players")
-                    mid.append(player)
-                elif player.role_preference_code[i] == "4":
-                    #print(f"Adding {player.name} to the pool of potential Bot players")
-                    bot.append(player)
-                elif player.role_preference_code[i] == "5":
-                    #print(f"Adding {player.name} to the pool of potential Support players")
-                    sup.append(player)
-                else:
-                    print(f"Why is there a player with a role preference digit that isn't between 1 to 5? {player.role_preference_code[i]}")
-                """"""
-            
-            print(f"Iteration {i}")
-            #check if pools have enough players
-            if len(top) < 3 or len(jug) < 3 or len(mid) < 3 or len(bot) < 3 or len(sup) < 3:
-                are_roles_pools_filled = False
-                print(f"A pool has less than 3 players, running through player list again.")
+        i += 1
+        for player in queued_player_list:       
+            #print(player.role_preference_code[i])
+            if player.role_preference_code[i] == "1":
+                #print(f"Adding {player.name} to the pool of potential Top players")
+                top.append(player)
+            elif player.role_preference_code[i] == "2":
+                #print(f"Adding {player.name} to the pool of potential Jungle players")
+                jug.append(player)
+            elif player.role_preference_code[i] == "3":
+                #print(f"Adding {player.name} to the pool of potential Mid players")
+                mid.append(player)
+            elif player.role_preference_code[i] == "4":
+                #print(f"Adding {player.name} to the pool of potential Bot players")
+                bot.append(player)
+            elif player.role_preference_code[i] == "5":
+                #print(f"Adding {player.name} to the pool of potential Support players")
+                sup.append(player)
             else:
-                are_roles_pools_filled = True
-                #exit early, don't go through every digit unless NECESSARY
-                print(f"Finished pool creation; used first {i+1} digits of role preference code.")
+                print(f"Why is there a player with a role preference digit that isn't between 1 to 5? {player.role_preference_code[i]}")
+                raise Exception("Invalid role preference digit in create_role_pools")
+            """"""
+        
+        print(f"Iteration {i}")
+        #check if pools have enough players
+        min_player_count = 3
+        are_roles_pools_filled = True
+        for index, role_pool in enumerate([top, jug, mid, bot, sup]):
+            if len(role_pool) < min_player_count:
+                are_roles_pools_filled = False
+                print(f"Pool {index + 1} has less than {min_player_count} players, running through player list again.")
+                print(*role_pool)
                 break
+    
     filled_pools = {"top": top, "jug": jug, "mid": mid, "bot": bot, "sup": sup}
     #print(filled_pools)
     return filled_pools
@@ -165,6 +183,7 @@ def generate_matchups(role_pools):
                 matchup = Matchup(player_list[i], player_list[j])
                 matchups[role].append(matchup)
                 
+    """
     sorted_matchups = {"top": [], "jug": [], "mid": [], "bot": [], "sup": []}        
     
     #Sort matchups by decreasing rank delta
@@ -178,6 +197,9 @@ def generate_matchups(role_pools):
                     most_fair_matchup = matchup
             sorted_matchups[role].append(most_fair_matchup)
             role_list.remove(most_fair_matchup)
+    """
+    
+    sorted_matchups = {role:sorted(matchups[role]) for role in matchups.keys()}
             
     print(f"Finished sorting matchups!")
     
@@ -220,39 +242,52 @@ def select_matchups(sorted_matchups, player_list):
             selected_matchups[role].append(player_two)
             
             #Remove all other matchups with those players
-            print(f"Removing matchups with {player_one} or {player_two}")
+            #print(f"Removing matchups with {player_one} or {player_two}")
             for i in range(0, 5):
                 role = prioritized_matchups[i][0]
                 matchup_list = prioritized_matchups[i][1]
                 copy_of_matchup_list = list(matchup_list)
-                print(f"Scanning {role} list.")
+                #print(f"Scanning {role} list.")
                 for matchup in copy_of_matchup_list:
                     if matchup.has_player(player_one) or matchup.has_player(player_two):
-                        print(f"Removing {matchup}")
+                        #print(f"Removing {matchup}")
                         matchup_list.remove(matchup)
             
         else:
             #need to autofill
             print(f"Need to autofill for {role}")
-            #autofill will be handled later
+            #autofill will be handled later, this is just debug print
+            """
             for role in selected_matchups:
                 print(role)
                 for player in selected_matchups[role]:
                     print(player)
+            """
                     
     
     #perform autofill check
     unfilled_matchups = [role for role in selected_matchups if len(selected_matchups[role]) < 2]
     selected_players = [player for role in selected_matchups.values() for player in role]
-    remaining_players = [player for player in player_list if player not in selected_players]
+    unselected_players = [player for player in player_list if player not in selected_players]
     
-    if len(remaining_players) > 0:
+    if len(unselected_players) > 0:
         print(f"Performing autofill protocol for {unfilled_matchups}")
         for role in unfilled_matchups:
-            selected_matchups[role].append(remaining_players[0])
-            selected_matchups[role].append(remaining_players[1])
-            print(f"Filling {role} with {remaining_players}")
-    
+            #cheap autofill - literally just grab the remaining players and force them into the role
+            selected_matchups[role].append(unselected_players[0])
+            selected_matchups[role].append(unselected_players[1])
+            
+            """
+            #fancier autofill - grab remaining players (there may be more than 2), create Matchup objects, pick the best one.
+            players_to_autofill = {}
+            players_to_autofill[role] = unselected_players
+            
+            matchups = generate_matchups(players_to_autofill)
+            """
+            
+            
+            unpacked_players = [player.name for player in unselected_players]
+            print(f"Filling {role} with {unpacked_players}")
     
     #turn the selected matchups 
     return selected_matchups
@@ -298,10 +333,11 @@ def generate_teams(selected_matchups):
         team_combinations.append(team_matchup)
         
     #Sort team combinations
-    team_combinations = sorted(team_combinations, key = lambda x: abs(x.rank_delta))
+    #team_combinations = sorted(team_combinations, key = lambda x: abs(x.rank_delta))
+    team_combinations = sorted(team_combinations)
     
-    for combo in team_combinations:
-        print(combo)
+    #for combo in team_combinations:
+        #print(combo)
         
     return team_combinations
     
