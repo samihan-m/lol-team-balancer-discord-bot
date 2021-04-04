@@ -961,8 +961,8 @@ async def start_game(ctx):
             
             await ctx.send("Updating the queued players, please wait a few seconds..")
             #First, update players
-            #for player in queued_players:
-                #utils.update_player(player)
+            for player in queued_players:
+                utils.update_player(player)
             
             await ctx.send("Starting matchmaking..")
             print(f"Starting matchmaking process with these players: {queued_players}")
