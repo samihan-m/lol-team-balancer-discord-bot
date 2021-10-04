@@ -49,6 +49,9 @@ else:
     from runner import Runner
     from player import Player
     client = pymongo.MongoClient(os.getenv("DB_TOKEN"))
+    
+#For use in requests to get around 403 erro
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
 database = client.balancer_bot
 runner_db = database.runners
@@ -254,7 +257,7 @@ def get_previous_rank_string(summoner, region_code, page = None):
         for i in range(0, times_to_scrape):
             print("Making request #%d to op.gg for rank" % (i + 1))
             #requesting page multiple times because it doesn't load the past rank list correctly every time
-            page = requests.get(opgg_page)
+            page = requests.get(opgg_page, headers= headers)
         
     soup = BeautifulSoup(page.text, "html.parser")
     past_rank_list = soup.find_all("li", {"class": "Item tip"})
@@ -309,10 +312,11 @@ def get_summoner_icon(summoner, region_code, page = None):
         for i in range(0, times_to_scrape):
             print("Making request #%d to op.gg for icon" % (i + 1))
             #requesting page multiple times because it doesn't load the past rank list correctly every time
-            page = requests.get(opgg_page)
-        
+            page = requests.get(opgg_page, headers = headers)
+    
     soup = BeautifulSoup(page.text, "html.parser")
     profile_icon_img = soup.find("img", {"class": "ProfileImage"})
+    
     
     #If the image is found, fetch that source
     if profile_icon_img:
@@ -335,7 +339,7 @@ def opgg_fetch(summoner, region_code):
     times_to_make_page_request = 1
     for i in range(0, times_to_make_page_request):
         print(f"Making request #{i} to op.gg for page information")   
-        page = requests.get(opgg_page)
+        page = requests.get(opgg_page, headers = headers)
         
     #using the page parameter to shortcut making several requests
     previous_rank_string = get_previous_rank_string(summoner, region_code, page = page)
