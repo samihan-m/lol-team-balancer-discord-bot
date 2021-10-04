@@ -1241,7 +1241,7 @@ async def print_help_message(ctx):
     #help_embed.add_field(name=f"{prefix}help", value = "Get this message DM'd to you.", inline=False)
     help_embed.add_field(name=f"{prefix}rpcode", value = "See a description of what the Role Preference Code is.", inline=False)
     help_embed.add_field(name=f"{prefix}add", value = f"Add a player (or multiple) to the player list.\n**Usage**: `{prefix}add Name RPCode` __OR__ `{prefix}add name Name1 RPCode1, Name2 RPCode2, ...`", inline=False)
-    help_embed.add_field(name=f"{prefix}edit", value = "Edit a player's role preference code.\n**Usage**: `{prefix}edit Name RPCode` __OR__ `{prefix}edit name Name1 RPCode1, Name2 RPCode2, ...`", inline=False)
+    help_embed.add_field(name=f"{prefix}edit", value = f"Edit a player's role preference code.\n**Usage**: `{prefix}edit Name RPCode` __OR__ `{prefix}edit name Name1 RPCode1, Name2 RPCode2, ...`", inline=False)
     help_embed.add_field(name=f"{prefix}remove", value = f"Remove a player (or multiple) from the player list.\n**Usage**: `{prefix}remove Name` __OR__ `{prefix}remove Name1, Name2, ...`", inline=False)
     help_embed.add_field(name=f"{prefix}queue", value = f"Enter a player (or multiple, separated by commas) into the active queue for game creation.\n**Usage**: `{prefix}queue Name` __OR__ `{prefix}queue Name1, Name2, ...`", inline=False)
     help_embed.add_field(name=f"{prefix}dequeue", value = f"Remove a player (or multiple, separated by commas) from the active queue.\n**Usage**: `{prefix}dequeue Name` __OR__ `{prefix}dequeue Name1, Name2, ...`", inline=False)
